@@ -21,7 +21,7 @@
 #define OLED_RESET 4
 Adafruit_SSD1306 display(OLED_RESET);
 
-#define REFRESH 1 // refresh rate for radar screen (turn speed of line)
+#define REFRESH 0 // refresh rate for radar screen (turn speed of line)
 
  // 'Radarscreen' bitmap
 const unsigned char backgroundMap [] PROGMEM = {
@@ -105,6 +105,10 @@ void setup()   {
   // Clear the buffer.
   display.clearDisplay();
 
+  display.setRotation(1);
+  testscrolltext();
+  display.clearDisplay();
+  display.setRotation(2);
 }
 
 void loop() {
@@ -161,41 +165,22 @@ void drawScreen(void) {
   display.display();
 }
 
-void testdrawchar(void) {
+void testscrolltext(void) {
   display.setTextSize(1);
   display.setTextColor(WHITE);
-  display.setCursor(0,0);
-
-  for (uint8_t i=0; i < 168; i++) {
-    if (i == '\n') continue;
-    display.write(i);
-    if ((i > 0) && (i % 21 == 0))
-      display.println();
-  }    
-  display.display();
-  delay(1);
-}
-
-void testscrolltext(void) {
-  display.setTextSize(2);
-  display.setTextColor(WHITE);
-  display.setCursor(10,0);
+  display.setCursor(1,20);
   display.clearDisplay();
-  display.println("scroll");
+  display.println("Radar");
+  display.print("startet");
   display.display();
-  delay(1);
- 
-  display.startscrollright(0x00, 0x0F);
-  delay(2000);
-  display.stopscroll();
-  delay(1000);
-  display.startscrollleft(0x00, 0x0F);
-  delay(2000);
-  display.stopscroll();
-  delay(1000);    
-  display.startscrolldiagright(0x00, 0x07);
-  delay(2000);
-  display.startscrolldiagleft(0x00, 0x07);
-  delay(2000);
-  display.stopscroll();
+  delay(800);
+  display.print(".");
+  display.display();
+  delay(800);
+  display.print(".");
+  display.display();
+  delay(800);
+  display.print(".");
+  display.display();
+  delay(3000);
 }
