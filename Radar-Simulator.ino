@@ -12,14 +12,18 @@
   CC-BY SA 2016 Kai Laborenz
 
 *********************************************************************/
-
+//#include <avr/power.h>
 #include <SPI.h>
 #include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
+//#include <Adafruit_GFX.h>
+//#include <Adafruit_SSD1306.h>
+#include <U8g2lib.h>
 
 #define OLED_RESET 4
-Adafruit_SSD1306 display(OLED_RESET);
+//Adafruit_SSD1306 display(OLED_RESET);
+
+//U8G2_SSD1306_64X32_1F_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
+U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
 
 #define REFRESH 0 // refresh rate for radar screen (turn speed of line)
 
@@ -91,96 +95,134 @@ const unsigned char backgroundMap [] PROGMEM = {
   0x03, 0xb8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x62, 0xc0, 0x00, 0x78, 0xe4
 };
 
+int lh; //lineheight
+int dw; // displayWidth
+int dh; // displayHeight
 
-#if (SSD1306_LCDHEIGHT != 64)
-#error("Height incorrect, please fix Adafruit_SSD1306.h!");
-#endif
+//#if (SSD1306_LCDHEIGHT != 64)
+//#error("Height incorrect, please fix Adafruit_SSD1306.h!");
+//#endif
 
-void setup()   {                
+void testscrolltext(void) {
+  
+  u8g2.setFont(u8g2_font_profont11_tr);  // choose a suitable font
+  //display.setTextColor(WHITE);
+  u8g2.clearBuffer();
+  lh = u8g2.getMaxCharHeight();
+  u8g2.setCursor(1,20);
+  u8g2.print("Radar");
+  u8g2.setCursor(1,20+lh); //start on next line
+  u8g2.print("startet");
+  u8g2.sendBuffer();
+  
+  delay(800);
+  u8g2.print(".");
+  u8g2.sendBuffer();
+  delay(800);
+  u8g2.print(".");
+  u8g2.sendBuffer();
+  delay(800);
+  u8g2.print(".");
+  u8g2.sendBuffer();
+
+  u8g2.setCursor(1,20+(3*lh)); //start on next line
+  u8g2.print(dw);
+  u8g2.print("x");
+  u8g2.print(dh);
+  u8g2.sendBuffer();
+  
+  delay(300);
+  u8g2.clearDisplay();
+}
+
+void drawScreen(void) {
+  u8g2.clearBuffer();
+  // draws circles on display
+  u8g2.drawDisc(dw/2, dh/2, 2, U8G2_DRAW_ALL);
+  u8g2.drawCircle(dw/2, dh/2, 15, U8G2_DRAW_ALL);
+  u8g2.drawCircle(dw/2, dh/2, 30, U8G2_DRAW_ALL);
+  u8g2.drawCircle(dw/2, dh/2, 45, U8G2_DRAW_ALL);
+  u8g2.drawCircle(dw/2, dh/2, 60, U8G2_DRAW_ALL);
+  u8g2.sendBuffer();
+}
+
+
+void setup()   {          
+ // if (F_CPU == 16000000) clock_prescale_set(clock_div_1);      
   Serial.begin(9600);
 
-  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // initialize with the I2C addr 0x3D (for the 128x64)
+  //display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  // initialize with the I2C addr 0x3D (for the 128x64)
+  u8g2.begin();
   // init done
 
-  // Clear the buffer.
-  display.clearDisplay();
+  dw = u8g2.getDisplayWidth();
+  dh = u8g2.getDisplayHeight();
+  
 
-  display.setRotation(1);
-  testscrolltext();
-  display.clearDisplay();
-  display.setRotation(2);
+  // Clear the buffer.
+  //display.clearDisplay();
+  u8g2.clearDisplay();
+
+  //display.setRotation(1);
+  //testscrolltext();
+  //drawScreen();
+  
+  //display.clearDisplay();
+  //display.setRotation(2);
 }
 
 void loop() {
 
 // simulated rotating beam by drawing a line from center to display border
 // end point for line is calculated in 4 phases for each side
-  
-for(int x = 0; x < 127; x++){
-    display.drawLine(display.width()/2, display.height()/2, x-1, 0, BLACK);
-    display.drawLine(display.width()/2, display.height()/2, x, 0, WHITE);
-    display.drawLine(display.width()/2, display.height()/2, x+1, 0, WHITE);
-    display.drawBitmap(0, 0,  backgroundMap, 128, 64, 1);
-    drawScreen();
+u8g2.clearDisplay();
+u8g2.clearBuffer();
+
+for(int x = 0; x < dw; x++){
+    u8g2.setDrawColor(0);
+    u8g2.drawLine(dw/2, dh/2, x-1, 0);
+    u8g2.setDrawColor(1);
+    u8g2.drawLine(dw/2, dh/2, x, 0);
+    u8g2.drawLine(dw/2, dh/2, x+1, 0);
+    //u8g2.drawXBMP( 0, 0, dw, dh, backgroundMap);
+    u8g2.sendBuffer();
     delay(REFRESH);
   }
-for(int x = 0; x < 63; x++){
-    display.drawLine(display.width()/2, display.height()/2, 127, x-1, BLACK);
-    display.drawLine(display.width()/2, display.height()/2, 127, x, WHITE);
-    display.drawLine(display.width()/2, display.height()/2, 127, x+1, WHITE);
-    display.drawBitmap(0, 0,  backgroundMap, 128, 64, 1);
-    drawScreen();
+
+for(int x = 0; x < dh; x++){
+    u8g2.setDrawColor(0);
+    u8g2.drawLine(dw/2, dh/2, dw-1, x-1);
+    u8g2.setDrawColor(1);
+    u8g2.drawLine(dw/2,dh/2, dw-1, x);
+    u8g2.drawLine(dw/2, dh/2, dw-1, x+1);
+
+    u8g2.sendBuffer();
     delay(REFRESH); 
-  }     
-for(int x = 127; x > 0; x--){
-    display.drawLine(display.width()/2, display.height()/2, x+1, 63, BLACK);
-    display.drawLine(display.width()/2, display.height()/2, x+2, 63, BLACK);
-    display.drawLine(display.width()/2, display.height()/2, x, 63, WHITE);
-    display.drawLine(display.width()/2, display.height()/2, x-1, 63, WHITE);
-    display.drawBitmap(0, 0,  backgroundMap, 128, 64, 1);
-    drawScreen();
+}     
+
+for(int x = dw; x > 0; x--){
+    u8g2.setDrawColor(0);
+    u8g2.drawLine(dw/2, dh/2, x+1, dh-1);
+    u8g2.drawLine(dw/2, dh/2, x+2, dh-1);
+    u8g2.setDrawColor(1);
+    u8g2.drawLine(dw/2, dh/2, x, dh-1);
+    u8g2.drawLine(dw/2, dh/2, x-1, dh-1);
+
+    u8g2.sendBuffer();
     delay(REFRESH); 
   }
-for(int x = 63; x > 0; x--){
-    display.drawLine(display.width()/2, display.height()/2, 0, x+1, BLACK);
-    display.drawLine(display.width()/2, display.height()/2, 0, x, WHITE);
-    display.drawLine(display.width()/2, display.height()/2, 0, x-1, WHITE);
-    display.drawBitmap(0, 0,  backgroundMap, 128, 64, 1);
-    drawScreen();
-    delay(REFRESH);
+
+for(int x = dh; x > 0; x--){
+    u8g2.setDrawColor(0);
+    u8g2.drawLine(dw/2, dh/2, 0, x+1);
+    u8g2.setDrawColor(1);
+    u8g2.drawLine(dw/2, dh/2, 0, x);
+    u8g2.drawLine(dw/2, dh/2, 0, x-1);
+    u8g2.sendBuffer();
+   delay(REFRESH);
   }
-  display.drawLine(display.width()/2, display.height()/2, 0, 1, BLACK); // needed to get rid of some artefact lines
-  display.drawLine(display.width()/2, display.height()/2, 1, 1, BLACK);
-}
 
-void drawScreen(void) {
 
-  // draws circles on display
-  
-  display.fillCircle(display.width()/2, display.height()/2, 2 , WHITE);
-  display.drawCircle(display.width()/2, display.height()/2, 15, WHITE);
-  display.drawCircle(display.width()/2, display.height()/2, 30, WHITE);
-  display.drawCircle(display.width()/2, display.height()/2, 45, WHITE);
-  display.drawCircle(display.width()/2, display.height()/2, 60, WHITE);
-  display.display();
-}
-
-void testscrolltext(void) {
-  display.setTextSize(1);
-  display.setTextColor(WHITE);
-  display.setCursor(1,20);
-  display.clearDisplay();
-  display.println("Radar");
-  display.print("startet");
-  display.display();
-  delay(800);
-  display.print(".");
-  display.display();
-  delay(800);
-  display.print(".");
-  display.display();
-  delay(800);
-  display.print(".");
-  display.display();
-  delay(3000);
+//  u8g2.drawLine(dw/2, dh/2, 0, 1, BLACK); // needed to get rid of some artefact lines
+//  u8g2.drawLine(dw/2, dh/2, 1, 1, BLACK);
 }
