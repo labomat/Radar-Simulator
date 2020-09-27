@@ -19,8 +19,15 @@
 #include <U8g2lib.h>
 
 #define OLED_RESET 4
-//#define OLED_BIG
-#define OLED_SMALL
+
+// change here between small 0.49" display with 64x32 pixel powered by 1306 driver
+// and 0.96" display with 1106 driver (i2c)
+
+#define OLED_BIG
+//#define OLED_SMALL
+
+// uncomment to use fast mode with broader stepping
+//#define FASTMODE
 
 #ifdef OLED_SMALL
   U8G2_SSD1306_64X32_1F_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE); // tiny 64*32 display
@@ -28,24 +35,22 @@
   U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R3, /* reset=*/ U8X8_PIN_NONE); // 128*64 dsiplay
 #endif
 
-
-
 int lh; //lineheight
 int dw; // displayWidth
 int dh; // displayHeight
 
 void initRadar(void) {
 
-int textStart = 20;   
+  int textStart = 20;  // starting position for text messages
 
-#ifdef OLED_SMALL
-  u8g2.setFont(u8g2_font_profont10_tr);  // choose a suitable font
-  textStart = 15;
-  #define REFRESH 20 // refresh rate for radar screen (turn speed of line)
-#else  
-  u8g2.setFont(u8g2_font_profont11_tr);  // choose a suitable font
-  #define REFRESH 0 // refresh rate for radar screen (turn speed of line)
-#endif  
+  #ifdef OLED_SMALL
+    u8g2.setFont(u8g2_font_profont10_tr);
+    textStart = 15;
+    #define REFRESH 20 // refresh rate for radar screen (turn speed of line, bigger is slower)
+  #else  
+    u8g2.setFont(u8g2_font_profont11_tr);
+    #define REFRESH 0 
+  #endif  
 
   u8g2.clearBuffer();
   lh = u8g2.getMaxCharHeight();
@@ -55,16 +60,19 @@ int textStart = 20;
   u8g2.setCursor(1,textStart+lh); //start on next line
   u8g2.print("startet");
   u8g2.sendBuffer();
-  
-  delay(800);
-  u8g2.print(".");
+  delay(500);
+
+  for(int p = 0; p < 3; p++){
+    u8g2.print(".");
+    u8g2.sendBuffer();
+    delay(500);
+  }
+
+ #ifdef FASTMODE
+  u8g2.setCursor(1,textStart+3*lh);
+  u8g2.print("FASTMODE");
   u8g2.sendBuffer();
-  delay(800);
-  u8g2.print(".");
-  u8g2.sendBuffer();
-  delay(800);
-  u8g2.print(".");
-  u8g2.sendBuffer();
+ #endif
  
   delay(2000);
   u8g2.clearDisplay();
@@ -73,19 +81,19 @@ int textStart = 20;
 void drawScreen(void) {
 
  // draws circles on display
+ int size_increment = 15;
+ int number_circles = 4;
 
  #ifdef OLED_SMALL
-  u8g2.drawDisc(dw/2, dh/2, 2, U8G2_DRAW_ALL);
-  u8g2.drawCircle(dw/2, dh/2, 10, U8G2_DRAW_ALL);
-  u8g2.drawCircle(dw/2, dh/2, 20, U8G2_DRAW_ALL);
-  u8g2.drawCircle(dw/2, dh/2, 30, U8G2_DRAW_ALL);
- #else
-  u8g2.drawDisc(dw/2, dh/2, 2, U8G2_DRAW_ALL);
-  u8g2.drawCircle(dw/2, dh/2, 15, U8G2_DRAW_ALL);
-  u8g2.drawCircle(dw/2, dh/2, 30, U8G2_DRAW_ALL);
-  u8g2.drawCircle(dw/2, dh/2, 45, U8G2_DRAW_ALL);
-  u8g2.drawCircle(dw/2, dh/2, 60, U8G2_DRAW_ALL);
+  size_increment = 10;
+  number_circles = 3;
  #endif 
+
+  u8g2.drawDisc(dw/2, dh/2, 2, U8G2_DRAW_ALL);
+  
+  for(int p = 0; p < number_circles+1; p++){
+    u8g2.drawCircle(dw/2, dh/2, p*size_increment, U8G2_DRAW_ALL);
+  }
   //u8g2.sendBuffer();
 }
 
@@ -93,7 +101,7 @@ void drawEchoes(void) {
 
  // draws some random radar echoes on screen
 
- #ifdef OLED_SMALL
+#ifdef OLED_SMALL
   int maxSmall = 20;
   int maxMedium = 10;
   int maxBig = 5;
@@ -136,6 +144,7 @@ for(int p = 0; p < maxMedium; p++){
 
 void setup()   {          
   Serial.begin(9600);
+  Wire.setClock(400000);
 
   // init display
   u8g2.begin();
@@ -157,6 +166,55 @@ void loop() {
 // end point for line is calculated in 4 phases for each side
 u8g2.clearBuffer();
 drawEchoes();
+
+#ifdef FASTMODE
+
+for(int x = 0; x < dw; x+=2){
+    u8g2.setDrawColor(0);
+    u8g2.drawLine(dw/2, dh/2, x-2, 0);
+    u8g2.setDrawColor(1);
+    u8g2.drawLine(dw/2, dh/2, x, 0);
+    u8g2.drawLine(dw/2, dh/2, x+2, 0);
+    drawScreen();
+    u8g2.sendBuffer();
+    delay(REFRESH);
+  }
+
+for(int x = 0; x < dh; x+=2){
+    u8g2.setDrawColor(0);
+    u8g2.drawLine(dw/2, dh/2, dw-1, x-2);
+    u8g2.setDrawColor(1);
+    u8g2.drawLine(dw/2,dh/2, dw-1, x);
+    u8g2.drawLine(dw/2, dh/2, dw-1, x+2);
+    drawScreen();
+    u8g2.sendBuffer();
+    delay(REFRESH); 
+}     
+
+for(int x = dw; x > 0; x-=2){
+    u8g2.setDrawColor(0);
+    u8g2.drawLine(dw/2, dh/2, x+2, dh-1);
+    u8g2.drawLine(dw/2, dh/2, x+3, dh-1);
+    u8g2.setDrawColor(1);
+    u8g2.drawLine(dw/2, dh/2, x, dh-1);
+    u8g2.drawLine(dw/2, dh/2, x-2, dh-1);
+    drawScreen();
+    u8g2.sendBuffer();
+    delay(REFRESH); 
+  }
+
+for(int x = dh; x > 0; x-=2){
+    u8g2.setDrawColor(0);
+    u8g2.drawLine(dw/2, dh/2, 0, x+2);
+    u8g2.setDrawColor(1);
+    u8g2.drawLine(dw/2, dh/2, 0, x);
+    u8g2.drawLine(dw/2, dh/2, 0, x-2);
+    drawScreen();
+    u8g2.sendBuffer();
+    delay(REFRESH);
+  }
+
+#else
 
 for(int x = 0; x < dw; x++){
     u8g2.setDrawColor(0);
@@ -202,4 +260,5 @@ for(int x = dh; x > 0; x--){
     u8g2.sendBuffer();
     delay(REFRESH);
   }
+#endif  
 }
